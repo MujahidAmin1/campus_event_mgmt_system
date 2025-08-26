@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:campus_event_mgmt_system/models/event.dart';
 import 'package:campus_event_mgmt_system/features/events/controller/event_controller.dart';
 import 'package:campus_event_mgmt_system/features/events/view/event_card.dart';
+import 'package:campus_event_mgmt_system/features/events/view/event_detail_screen.dart';
+import 'package:campus_event_mgmt_system/features/events/view/my_events_screen.dart';
+import 'package:campus_event_mgmt_system/features/profile/view/profile_screen.dart';
 import 'package:campus_event_mgmt_system/core/utils/kTextStyle.dart';
 
 class EventsScreen extends ConsumerWidget {
@@ -14,7 +17,7 @@ class EventsScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
-      appBar: _buildAppBar(),
+      appBar: _buildAppBar(context),
       body: Column(
         children: [
           _buildFilterSection(ref, eventsAsync),
@@ -25,7 +28,7 @@ class EventsScreen extends ConsumerWidget {
     );
   }
 
-  PreferredSizeWidget _buildAppBar() {
+  PreferredSizeWidget _buildAppBar(BuildContext context) {
     return AppBar(
       title: Text('Campus Events', style: kTextStyle(size: 20, isBold: true)),
       backgroundColor: Colors.white,
@@ -33,9 +36,25 @@ class EventsScreen extends ConsumerWidget {
       centerTitle: true,
       actions: [
         IconButton(
+          icon: const Icon(Icons.event_available),
+          onPressed: () {
+            Navigator.push(context, MaterialPageRoute(
+              builder: (context) => const MyEventsScreen(),
+            ));
+          },
+        ),
+        IconButton(
           icon: const Icon(Icons.search),
           onPressed: () {
             // TODO: Implement search
+          },
+        ),
+        IconButton(
+          icon: const Icon(Icons.person),
+          onPressed: () {
+            Navigator.push(context, MaterialPageRoute(
+              builder: (context) => const ProfileScreen(),
+            ));
           },
         ),
       ],
@@ -193,20 +212,14 @@ class EventsScreen extends ConsumerWidget {
   }
 
   Widget _buildFAB(BuildContext context) {
-    return FloatingActionButton(
-      onPressed: () => _handleCreateEvent(context),
-      backgroundColor: Theme.of(context).primaryColor,
-      child: const Icon(Icons.add, color: Colors.white),
-    );
+    // Students cannot create events, so no FAB needed
+    return const SizedBox.shrink();
   }
 
   void _handleEventTap(BuildContext context, Event event) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Opening ${event.title}'),
-        duration: const Duration(seconds: 1),
-      ),
-    );
+    Navigator.push(context, MaterialPageRoute(
+      builder: (context) => EventDetailScreen(event: event),
+    ));
   }
 
   void _handleRegister(BuildContext context, Event event) {

@@ -5,12 +5,5 @@ class Admin extends User {
     String? id,
     String? name,
     String? email,
-  }) : super(
-    id: id ?? '',
-    name: name ?? '',
-    email: email ?? '',
-    role: UserRole.admin,
-    createdAt: DateTime.now(),
-    registeredEventIds: [],
-  );
+  }) : super(id: id, name: name, email: email);
 }

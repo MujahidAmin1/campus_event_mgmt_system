@@ -85,3 +85,4 @@ The feature uses the `Event` model with the following properties:
 - Organizer and participant info
 - Categories and pricing
 
+

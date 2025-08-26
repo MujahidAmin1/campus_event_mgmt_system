@@ -1,21 +1,9 @@
-enum EventCategory {
-  seminar,
-  concert,
-  competition,
-  workshop,
-  conference,
-  sports,
-  cultural,
-  other,
-}
-
 class Event {
   final String id;
   final String title;
   final String description;
   final DateTime dateTime;
   final String venue;
-  final EventCategory category;
   final String organizerId;
   final String organizerName;
   final int registeredUsers;
@@ -27,7 +15,6 @@ class Event {
     required this.description,
     required this.dateTime,
     required this.venue,
-    required this.category,
     required this.organizerId,
     required this.organizerName,
     this.registeredUsers = 0,
@@ -41,9 +28,6 @@ class Event {
       description: json['description'],
       dateTime: DateTime.parse(json['dateTime']),
       venue: json['venue'],
-      category: EventCategory.values.firstWhere(
-        (e) => e.toString().split('.').last == json['category'],
-      ),
       organizerId: json['organizerId'],
       organizerName: json['organizerName'],
       registeredUsers: json['registeredUsers'] ?? 0,
@@ -58,7 +42,6 @@ class Event {
       'description': description,
       'dateTime': dateTime.toIso8601String(),
       'venue': venue,
-      'category': category.toString().split('.').last,
       'organizerId': organizerId,
       'organizerName': organizerName,
       'registeredUsers': registeredUsers,

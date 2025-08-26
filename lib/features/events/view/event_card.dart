@@ -52,36 +52,15 @@ class EventCard extends StatelessWidget {
   }
 
   Widget _buildHeader() {
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            event.title,
-            style: kTextStyle(size: 18, isBold: true),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-        _buildCategoryChip(),
-      ],
+    return Text(
+      event.title,
+      style: kTextStyle(size: 18, isBold: true),
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
     );
   }
 
-  Widget _buildCategoryChip() {
-    final categoryColor = _getCategoryColor(event.category);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: categoryColor.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: categoryColor),
-      ),
-      child: Text(
-        event.category.name.toUpperCase(),
-        style: kTextStyle(size: 10, isBold: true, color: categoryColor),
-      ),
-    );
-  }
+  // Category chip removed as category is no longer part of the model
 
   Widget _buildDescription() {
     return Text(
@@ -178,27 +157,8 @@ class EventCard extends StatelessWidget {
   }
 
   bool _shouldShowRegisterButton() {
-    return showRegisterButton && event.isUpcoming;
+    return showRegisterButton && event.isUpcoming && !event.isPast;
   }
 
-  Color _getCategoryColor(EventCategory category) {
-    switch (category) {
-      case EventCategory.seminar:
-        return Colors.blue;
-      case EventCategory.concert:
-        return Colors.purple;
-      case EventCategory.competition:
-        return Colors.orange;
-      case EventCategory.workshop:
-        return Colors.green;
-      case EventCategory.conference:
-        return Colors.indigo;
-      case EventCategory.sports:
-        return Colors.red;
-      case EventCategory.cultural:
-        return Colors.pink;
-      case EventCategory.other:
-        return Colors.grey;
-    }
-  }
+  // Category color helper removed
 }
