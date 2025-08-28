@@ -1,63 +1,86 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:campus_event_mgmt_system/models/event.dart';
 import 'package:campus_event_mgmt_system/features/events/repository/event_repository.dart';
+import 'package:campus_event_mgmt_system/core/providers.dart';
 
-// Repository provider
-final eventRepositoryProvider = Provider<EventRepository>((ref) => EventRepositoryImpl());
+enum EventFilter { upcoming, ongoing, past }
 
-// Filter state provider
-final eventFilterProvider = StateProvider<EventFilter>((ref) => EventFilter.upcoming);
+var eventFilterProvider = StateProvider<EventFilter>((ref) => EventFilter.upcoming);
 
-// Events provider with auto-refresh based on filter
-final eventsProvider = FutureProvider<List<Event>>((ref) async {
+var eventsProvider = FutureProvider<List<Event>>((ref) async {
+  final repository = ref.read(eventRepositoryProvider);
+  return await repository.getEvents();
+});
+
+var filteredEventsProvider = Provider<AsyncValue<List<Event>>>((ref) {
+  final eventsAsync = ref.watch(eventsProvider);
   final filter = ref.watch(eventFilterProvider);
-  final repository = ref.read(eventRepositoryProvider);
-  return repository.getEventsByFilter(filter);
+  
+  return eventsAsync.when(
+    data: (events) {
+      final filteredEvents = events.where((event) {
+        switch (filter) {
+          case EventFilter.upcoming:
+            return event.isUpcoming;
+          case EventFilter.ongoing:
+            return event.isOngoing;
+          case EventFilter.past:
+            return event.isPast;
+        }
+      }).toList();
+      return AsyncValue.data(filteredEvents);
+    },
+    loading: () => const AsyncValue.loading(),
+    error: (error, stack) => AsyncValue.error(error, stack),
+  );
 });
 
-// Event actions controller
-final eventActionsProvider = Provider<EventActions>((ref) {
-  final repository = ref.read(eventRepositoryProvider);
-  return EventActions(repository, ref);
+var eventRepositoryProvider = Provider<EventRepository>((ref) {
+  final apiService = ref.read(apiServiceProvider);
+  return EventRepository(apiService);
 });
 
-// Event actions class - simplified business logic
-class EventActions {
+class EventController extends StateNotifier<AsyncValue<List<Event>>> {
   final EventRepository _repository;
-  final Ref _ref;
 
-  EventActions(this._repository, this._ref);
-
-  Future<void> createEvent(Event event) async {
-    await _repository.createEvent(event);
-    _refreshEvents();
+  EventController(this._repository) : super(const AsyncValue.loading()) {
+    loadEvents();
   }
 
-  Future<void> updateEvent(Event event) async {
-    await _repository.updateEvent(event);
-    _refreshEvents();
+  Future<void> loadEvents() async {
+    state = const AsyncValue.loading();
+    try {
+      final events = await _repository.getEvents();
+      state = AsyncValue.data(events);
+    } catch (error, stack) {
+      state = AsyncValue.error(error, stack);
+    }
   }
 
-  Future<void> deleteEvent(String id) async {
-    await _repository.deleteEvent(id);
-    _refreshEvents();
+  Future<void> createEvent(Map<String, dynamic> eventData) async {
+    try {
+      await _repository.createEvent(eventData);
+      await loadEvents(); // Reload events after creation
+    } catch (error, stack) {
+      state = AsyncValue.error(error, stack);
+    }
   }
 
-  Future<void> registerForEvent(String eventId, String userId) async {
-    await _repository.registerForEvent(eventId, userId);
-    _refreshEvents();
+  Future<void> updateEvent(String eventId, Map<String, dynamic> eventData) async {
+    try {
+      await _repository.updateEvent(eventId, eventData);
+      await loadEvents(); // Reload events after update
+    } catch (error, stack) {
+      state = AsyncValue.error(error, stack);
+    }
   }
 
-  Future<void> unregisterFromEvent(String eventId, String userId) async {
-    await _repository.unregisterFromEvent(eventId, userId);
-    _refreshEvents();
-  }
-
-  Future<List<Event>> searchEvents(String query) async {
-    return _repository.searchEvents(query);
-  }
-
-  void _refreshEvents() {
-    _ref.invalidate(eventsProvider);
+  Future<void> deleteEvent(String eventId) async {
+    try {
+      await _repository.deleteEvent(eventId);
+      await loadEvents(); // Reload events after deletion
+    } catch (error, stack) {
+      state = AsyncValue.error(error, stack);
+    }
   }
 }

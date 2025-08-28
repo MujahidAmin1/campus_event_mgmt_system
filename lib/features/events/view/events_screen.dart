@@ -13,7 +13,7 @@ class EventsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final eventsAsync = ref.watch(eventsProvider);
+    final eventsAsync = ref.watch(filteredEventsProvider);
 
     return Scaffold(
       backgroundColor: Colors.grey[50],

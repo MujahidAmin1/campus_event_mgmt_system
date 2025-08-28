@@ -2,36 +2,27 @@ class Event {
   final String id;
   final String title;
   final String description;
-  final DateTime dateTime;
-  final String venue;
-  final String organizerId;
-  final String organizerName;
-  final int registeredUsers;
-  final DateTime createdAt;
+  final DateTime date;
+  final String location;
+  final String createdBy;
 
-  Event({
+  const Event({
     required this.id,
     required this.title,
     required this.description,
-    required this.dateTime,
-    required this.venue,
-    required this.organizerId,
-    required this.organizerName,
-    this.registeredUsers = 0,
-    required this.createdAt,
+    required this.date,
+    required this.location,
+    required this.createdBy,
   });
 
   factory Event.fromJson(Map<String, dynamic> json) {
     return Event(
-      id: json['id'],
-      title: json['title'],
-      description: json['description'],
-      dateTime: DateTime.parse(json['dateTime']),
-      venue: json['venue'],
-      organizerId: json['organizerId'],
-      organizerName: json['organizerName'],
-      registeredUsers: json['registeredUsers'] ?? 0,
-      createdAt: DateTime.parse(json['createdAt']),
+      id: json['id']?.toString() ?? '',
+      title: json['title'] ?? '',
+      description: json['description'] ?? '',
+      date: DateTime.parse(json['date'] ?? DateTime.now().toIso8601String()),
+      location: json['location'] ?? '',
+      createdBy: json['createdBy'] ?? '',
     );
   }
 
@@ -40,25 +31,21 @@ class Event {
       'id': id,
       'title': title,
       'description': description,
-      'dateTime': dateTime.toIso8601String(),
-      'venue': venue,
-      'organizerId': organizerId,
-      'organizerName': organizerName,
-      'registeredUsers': registeredUsers,
-      'createdAt': createdAt.toIso8601String(),
+      'date': date.toIso8601String(),
+      'location': location,
+      'createdBy': createdBy,
     };
   }
 
-  // Helper methods for filtering
-  bool get isUpcoming => dateTime.isAfter(DateTime.now());
-  bool get isOngoing => dateTime.isBefore(DateTime.now()) && 
-                       dateTime.add(const Duration(hours: 3)).isAfter(DateTime.now());
-  bool get isPast => dateTime.add(const Duration(hours: 3)).isBefore(DateTime.now());
-}
+  // Computed properties for event status
+  bool get isPast => date.isBefore(DateTime.now());
+  bool get isOngoing => !isPast && date.isBefore(DateTime.now().add(const Duration(hours: 3)));
+  bool get isUpcoming => !isPast && !isOngoing;
 
-enum EventFilter {
-  upcoming,
-  ongoing,
-  past,
+  // For backward compatibility with existing UI
+  DateTime get dateTime => date;
+  String get venue => location;
+  String get organizerName => createdBy;
+  int get registeredUsers => 0; // This will need to be updated when you have registration API
 }
 

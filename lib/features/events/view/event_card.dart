@@ -76,10 +76,10 @@ class EventCard extends StatelessWidget {
       children: [
         _buildDetailItem(
           Icons.calendar_today,
-          DateFormat('MMM dd, yyyy - hh:mm a').format(event.dateTime),
+          DateFormat('MMM dd, yyyy - hh:mm a').format(event.date),
         ),
         const SizedBox(width: 16),
-        _buildDetailItem(Icons.location_on, event.venue),
+        _buildDetailItem(Icons.location_on, event.location),
       ],
     );
   }
@@ -107,7 +107,7 @@ class EventCard extends StatelessWidget {
       children: [
         Expanded(
           child: Text(
-            event.organizerName,
+            event.createdBy,
             style: kTextStyle(size: 12, color: Colors.grey[600]),
             overflow: TextOverflow.ellipsis,
           ),

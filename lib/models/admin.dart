@@ -2,8 +2,14 @@ import 'package:campus_event_mgmt_system/models/user.dart';
 
 class Admin extends User {
   Admin({
-    String? id,
-    String? name,
-    String? email,
-  }) : super(id: id, name: name, email: email);
+    required String id,
+    required String username,
+    required String email,
+    required String role,
+  }) : super(
+          id: id,
+          username: username,
+          email: email,
+          role: role,
+        );
 }

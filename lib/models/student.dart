@@ -4,9 +4,15 @@ class Student extends User {
   List<String>? registeredEventIds; // Track registered events
 
   Student({
-    String? id,
-    String? name,
-    String? email,
+    required String id,
+    required String username,
+    required String email,
+    required String role,
     this.registeredEventIds,
-  }) : super(id: id, name: name, email: email);
+  }) : super(
+          id: id,
+          username: username,
+          email: email,
+          role: role,
+        );
 }
