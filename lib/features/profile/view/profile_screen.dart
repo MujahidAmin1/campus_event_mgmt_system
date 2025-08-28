@@ -1,9 +1,9 @@
+import 'package:campus_event_mgmt_system/features/auth/controller/auth_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:campus_event_mgmt_system/core/providers.dart';
 import 'package:campus_event_mgmt_system/core/utils/kTextStyle.dart';
 import 'package:campus_event_mgmt_system/features/auth/view/auth_screen.dart';
-import 'package:campus_event_mgmt_system/features/profile/view/notification_settings_screen.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -152,7 +152,7 @@ class ProfileScreen extends ConsumerWidget {
             Icons.notifications_outlined,
             'Notifications',
             'Manage your notification preferences',
-            () => _handleNotifications(context),
+            () => (context),
           ),
           _buildDivider(),
           _buildProfileOption(
@@ -251,11 +251,11 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  void _handleNotifications(BuildContext context) {
-    Navigator.push(context, MaterialPageRoute(
-      builder: (context) => const NotificationSettingsScreen(),
-    ));
-  }
+  // void _handleNotifications(BuildContext context) {
+  //   Navigator.push(context, MaterialPageRoute(
+  //     builder: (context) => const NotificationSettingsScreen(),
+  //   ));
+  // }
 
   void _handlePrivacy(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -340,24 +340,34 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  void _performLogout(BuildContext context, WidgetRef ref) {
-    // Reset user role to default
-    setUserRole(ref, UserRole.student);
-    
-    // Navigate to auth screen
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (context) => const AuthScreen()),
-      (route) => false,
-    );
-    
-    // Show logout confirmation
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Successfully logged out'),
-        backgroundColor: Colors.green,
-        duration: Duration(seconds: 2),
-      ),
-    );
+    void _performLogout(BuildContext context, WidgetRef ref) async {
+    try {
+      // Call AuthController's signOut
+      await ref.read(authControllerProvider.notifier).logout();
+
+      // Navigate to auth screen
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const AuthScreen()),
+        (route) => false,
+      );
+
+      // Show logout confirmation
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Successfully logged out'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Logout failed: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 }

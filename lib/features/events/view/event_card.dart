@@ -51,35 +51,29 @@ class EventCard extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader() {
-    return Text(
-      event.title,
-      style: kTextStyle(size: 18, isBold: true),
-      maxLines: 2,
-      overflow: TextOverflow.ellipsis,
-    );
-  }
+  Widget _buildHeader() => Text(
+        event.title,
+        style: kTextStyle(size: 18, isBold: true),
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+      );
 
-  // Category chip removed as category is no longer part of the model
-
-  Widget _buildDescription() {
-    return Text(
-      event.description,
-      style: kTextStyle(size: 14, color: Colors.grey[600]),
-      maxLines: 2,
-      overflow: TextOverflow.ellipsis,
-    );
-  }
+  Widget _buildDescription() => Text(
+        event.description,
+        style: kTextStyle(size: 14, color: Colors.grey[600]),
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+      );
 
   Widget _buildEventDetails() {
     return Row(
       children: [
         _buildDetailItem(
           Icons.calendar_today,
-          DateFormat('MMM dd, yyyy - hh:mm a').format(event.date),
+          "${DateFormat('MMM dd, yyyy').format(event.startDateTime)} - ${DateFormat('hh:mm a').format(event.startDateTime)}",
         ),
         const SizedBox(width: 16),
-        _buildDetailItem(Icons.location_on, event.location),
+        _buildDetailItem(Icons.location_on, event.venue),
       ],
     );
   }
@@ -107,7 +101,7 @@ class EventCard extends StatelessWidget {
       children: [
         Expanded(
           child: Text(
-            event.organiser,
+            event.organizerName,
             style: kTextStyle(size: 12, color: Colors.grey[600]),
             overflow: TextOverflow.ellipsis,
           ),
@@ -159,6 +153,4 @@ class EventCard extends StatelessWidget {
   bool _shouldShowRegisterButton() {
     return showRegisterButton && event.isUpcoming && !event.isPast;
   }
-
-  // Category color helper removed
 }

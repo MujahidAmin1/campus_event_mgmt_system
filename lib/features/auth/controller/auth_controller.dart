@@ -25,7 +25,7 @@ class AuthController extends StateNotifier<AsyncValue<User?>> {
     }
   }
 
-  /// Login
+  /// Login - use email for login, not username
   Future<void> login(String email, String password) async {
     state = const AsyncValue.loading();
     try {
@@ -49,11 +49,15 @@ class AuthController extends StateNotifier<AsyncValue<User?>> {
 
   /// Logout
   Future<void> logout() async {
-    await _authService.signOut();
-    _ref.read(currentUserProvider.notifier).state = null;
-    _ref.read(userRoleProvider.notifier).state = UserRole.student;
-    _ref.read(isAuthenticatedProvider.notifier).state = false;
-    state = const AsyncValue.data(null);
+    try {
+      await _authService.signOut();
+      _ref.read(currentUserProvider.notifier).state = null;
+      _ref.read(userRoleProvider.notifier).state = UserRole.student;
+      _ref.read(isAuthenticatedProvider.notifier).state = false;
+      state = const AsyncValue.data(null);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
   }
 
   /// Clear error

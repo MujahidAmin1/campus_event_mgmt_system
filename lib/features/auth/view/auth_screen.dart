@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart' hide User;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:campus_event_mgmt_system/core/providers.dart';
@@ -46,7 +47,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
       next.whenOrNull(
         error: (error, stack) {
-          _showErrorSnackBar(error.toString());
+          _showErrorSnackBar(_getErrorMessage(error));
         },
       );
     });
@@ -117,31 +118,31 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   Widget _buildAuthForm() {
     return Column(
       children: [
-        _buildTextField(
-          controller: _usernameController,
-          label: 'Username',
-          icon: Icons.person,
-          validator: (value) {
-            if (value == null || value.isEmpty) return 'Please enter your username';
-            return null;
-          },
-        ),
-        const SizedBox(height: 16),
         if (!_isLogin)
           _buildTextField(
-            controller: _emailController,
-            label: 'Email',
-            icon: Icons.email,
-            keyboardType: TextInputType.emailAddress,
+            controller: _usernameController,
+            label: 'Username',
+            icon: Icons.person,
             validator: (value) {
-              if (value == null || value.isEmpty) return 'Please enter your email';
-              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                return 'Please enter a valid email';
-              }
+              if (value == null || value.isEmpty) return 'Please enter your username';
               return null;
             },
           ),
         if (!_isLogin) const SizedBox(height: 16),
+        _buildTextField(
+          controller: _emailController,
+          label: 'Email',
+          icon: Icons.email,
+          keyboardType: TextInputType.emailAddress,
+          validator: (value) {
+            if (value == null || value.isEmpty) return 'Please enter your email';
+            if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+              return 'Please enter a valid email';
+            }
+            return null;
+          },
+        ),
+        const SizedBox(height: 16),
         _buildTextField(
           controller: _passwordController,
           label: 'Password',
@@ -269,6 +270,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         TextButton(
           onPressed: () => setState(() {
             _isLogin = !_isLogin;
+            // Clear form when switching modes
+            _formKey.currentState?.reset();
+            _usernameController.clear();
+            _emailController.clear();
+            _passwordController.clear();
           }),
           child: Text(_isLogin ? 'Register' : 'Login', style: kTextStyle(size: 14, isBold: true, color: Colors.blue[700])),
         ),
@@ -280,7 +286,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     if (_formKey.currentState!.validate()) {
       final authController = ref.read(authControllerProvider.notifier);
       if (_isLogin) {
-        authController.login(_usernameController.text.trim(), _passwordController.text);
+        authController.login(_emailController.text.trim(), _passwordController.text);
       } else {
         authController.register(
           _usernameController.text.trim(),
@@ -290,6 +296,28 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         );
       }
     }
+  }
+
+  String _getErrorMessage(dynamic error) {
+    if (error is FirebaseAuthException) {
+      switch (error.code) {
+        case 'user-not-found':
+          return 'No user found with this email.';
+        case 'wrong-password':
+          return 'Wrong password provided.';
+        case 'email-already-in-use':
+          return 'An account already exists with this email.';
+        case 'weak-password':
+          return 'The password provided is too weak.';
+        case 'invalid-email':
+          return 'The email address is not valid.';
+        case 'too-many-requests':
+          return 'Too many attempts. Please try again later.';
+        default:
+          return error.message ?? 'An authentication error occurred.';
+      }
+    }
+    return error.toString();
   }
 
   void _showErrorSnackBar(String message) {

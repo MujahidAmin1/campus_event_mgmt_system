@@ -1,51 +1,59 @@
+
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class Event {
   final String id;
   final String title;
   final String description;
-  final DateTime date;
-  final String location;
-  final String organiser;
+  final String venue;
+  final DateTime startDateTime;
+  final DateTime endDateTime;
+  final String organizerName;
+  final int registeredUsers;
 
-  const Event({
+  Event({
     required this.id,
     required this.title,
     required this.description,
-    required this.date,
-    required this.location,
-    required this.organiser,
+    required this.venue,
+    required this.startDateTime,
+    required this.endDateTime,
+    required this.organizerName,
+    this.registeredUsers = 0,
   });
 
-  factory Event.fromJson(Map<String, dynamic> json) {
-    return Event(
-      id: json['id']?.toString() ?? '',
-      title: json['title'] ?? '',
-      description: json['description'] ?? '',
-      date: DateTime.parse(json['date'] ?? DateTime.now().toIso8601String()),
-      location: json['location'] ?? '',
-      organiser: json['organiser'] ?? '',
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'title': title,
-      'description': description,
-      'date': date.toIso8601String(),
-      'location': location,
-      'organiser': organiser,
-    };
-  }
-
-  // Computed properties for event status
-  bool get isPast => date.isBefore(DateTime.now());
-  bool get isOngoing => !isPast && date.isBefore(DateTime.now().add(const Duration(hours: 3)));
-  bool get isUpcoming => !isPast && !isOngoing;
-
-  // For backward compatibility with existing UI
-  DateTime get dateTime => date;
-  String get venue => location;
-  String get organizerName => organiser;
-  int get registeredUsers => 0; // This will need to be updated when you have registration API
+  factory Event.fromJson(DocumentSnapshot doc) {
+  final data = doc.data() as Map<String, dynamic>;
+  return Event(
+    id: doc.id,
+    title: data['title'] ?? '',
+    description: data['description'] ?? '',
+    venue: data['venue'] ?? '',
+    startDateTime: (data['startDateTime'] is Timestamp)
+        ? (data['startDateTime'] as Timestamp).toDate()
+        : DateTime.now(), // fallback
+    endDateTime: (data['endDateTime'] is Timestamp)
+        ? (data['endDateTime'] as Timestamp).toDate()
+        : DateTime.now(), // fallback
+    organizerName: data['organizerName'] ?? '',
+    registeredUsers: data['registeredUsers'] ?? 0,
+  );
 }
 
+
+  Map<String, dynamic> toJson() => {
+        'title': title,
+        'description': description,
+        'venue': venue,
+        'startDateTime': Timestamp.fromDate(startDateTime),
+        'endDateTime': Timestamp.fromDate(endDateTime),
+        'organizerName': organizerName,
+        'registeredUsers': registeredUsers,
+      };
+
+  bool get isUpcoming => startDateTime.isAfter(DateTime.now());
+  bool get isOngoing =>
+      DateTime.now().isAfter(startDateTime) && DateTime.now().isBefore(endDateTime);
+  bool get isPast => endDateTime.isBefore(DateTime.now());
+}

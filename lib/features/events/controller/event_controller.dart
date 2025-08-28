@@ -3,18 +3,17 @@ import 'package:campus_event_mgmt_system/models/event.dart';
 import 'package:campus_event_mgmt_system/features/events/repository/event_repository.dart';
 
 enum EventFilter { upcoming, ongoing, past }
-
-final eventRepositoryProvider = Provider<EventRepository>((ref) {
-  return EventRepository();
-});
-
 final eventFilterProvider = StateProvider<EventFilter>((ref) => EventFilter.upcoming);
 
-/// Stream of all events from Firestore
-final eventsProvider = StreamProvider<List<Event>>((ref) {
-  final repository = ref.read(eventRepositoryProvider);
-  return repository.getEventsStream();
-});
+final eventRepositoryProvider = Provider<EventRepository>((ref) => EventRepository());
+
+final eventsProvider = StateNotifierProvider<EventController, AsyncValue<List<Event>>>(
+  (ref) => EventController(ref),
+);
+
+final userEventsProvider = FutureProvider.family<List<Event>, String>(
+  (ref, userId) => ref.read(eventRepositoryProvider).getUserRegisteredEvents(userId),
+);
 
 /// Filtered events based on selected filter
 final filteredEventsProvider = Provider<AsyncValue<List<Event>>>((ref) {
@@ -39,50 +38,37 @@ final filteredEventsProvider = Provider<AsyncValue<List<Event>>>((ref) {
     error: (e, st) => AsyncValue.error(e, st),
   );
 });
-
-/// EventController for manual operations (create/update/delete)
 class EventController extends StateNotifier<AsyncValue<List<Event>>> {
-  final EventRepository _repository;
-  EventController(this._repository) : super(const AsyncValue.loading()) {
-    _listenToEvents();
+  final Ref ref;
+
+  EventController(this.ref) : super(const AsyncValue.loading()) {
+    fetchEvents();
   }
 
-  void _listenToEvents() {
-    _repository.getEventsStream().listen((events) {
+  Future<void> fetchEvents() async {
+    try {
+      final events = await ref.read(eventRepositoryProvider).getAllEvents();
       state = AsyncValue.data(events);
-    }, onError: (error, stack) {
-      state = AsyncValue.error(error, stack);
-    });
-  }
-
-  Future<void> createEvent(Map<String, dynamic> eventData) async {
-    try {
-      await _repository.createEvent(eventData);
-    } catch (error, stack) {
-      state = AsyncValue.error(error, stack);
+    } catch (e) {
+      state = AsyncValue.error(e, StackTrace.current);
     }
   }
 
-  Future<void> updateEvent(String eventId, Map<String, dynamic> eventData) async {
+   Future<void> registerForEvent(String userId, Event event) async {
     try {
-      await _repository.updateEvent(eventId, eventData);
-    } catch (error, stack) {
-      state = AsyncValue.error(error, stack);
+      await ref.read(eventRepositoryProvider).registerUserForEvent(userId, event);
+    } catch (e) {
+      rethrow; // or handle error
     }
   }
-
-  Future<void> deleteEvent(String eventId) async {
+  /// 🔹 Create a new event
+  Future<void> createTheEvent(Event event) async {
     try {
-      await _repository.deleteEvent(eventId);
-    } catch (error, stack) {
-      state = AsyncValue.error(error, stack);
+      await ref.read(eventRepositoryProvider).createEvent(event);
+      await fetchEvents(); // refresh list after adding
+    } catch (e) {
+      rethrow;
     }
-  }
+  
 }
-
-/// Provider for EventController
-final eventControllerProvider =
-    StateNotifierProvider<EventController, AsyncValue<List<Event>>>((ref) {
-  final repository = ref.read(eventRepositoryProvider);
-  return EventController(repository);
-});
+}

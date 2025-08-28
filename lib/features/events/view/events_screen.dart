@@ -1,3 +1,5 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:campus_event_mgmt_system/models/event.dart';
@@ -13,6 +15,7 @@ class EventsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    
     final eventsAsync = ref.watch(filteredEventsProvider);
 
     return Scaffold(
@@ -29,6 +32,7 @@ class EventsScreen extends ConsumerWidget {
   }
 
   PreferredSizeWidget _buildAppBar(BuildContext context) {
+    FirebaseAuth auth = FirebaseAuth.instance;
     return AppBar(
       title: Text('Campus Events', style: kTextStyle(size: 20, isBold: true)),
       backgroundColor: Colors.white,
@@ -39,7 +43,7 @@ class EventsScreen extends ConsumerWidget {
           icon: const Icon(Icons.event_available),
           onPressed: () {
             Navigator.push(context, MaterialPageRoute(
-              builder: (context) => const MyEventsScreen(),
+              builder: (context) => MyEventsScreen(userId: auth.currentUser!.uid,),
             ));
           },
         ),
@@ -155,7 +159,8 @@ class EventsScreen extends ConsumerWidget {
                 return EventCard(
                   event: events[index],
                   onTap: () => _handleEventTap(context, events[index]),
-                  onRegister: () => _handleRegister(context, events[index]),
+                  onRegister: () => _handleRegister(context, ref ,events[index], FirebaseAuth.instance.currentUser!.uid),
+                  isRegistered: true,
                 );
               },
             ),
@@ -222,27 +227,24 @@ class EventsScreen extends ConsumerWidget {
     ));
   }
 
-  void _handleRegister(BuildContext context, Event event) {
-    // TODO: Implement registration logic
+ void _handleRegister(BuildContext context, WidgetRef ref, Event event, String userId) async {
+  try {
+    // Call controller registration
+    await ref.read(eventsProvider.notifier).registerForEvent(userId, event);
+
+    // Show success
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Registering for ${event.title}'),
-        duration: const Duration(seconds: 1),
-      ),
+      SnackBar(content: Text('Successfully registered for ${event.title}')),
+    );
+  } catch (e) {
+    // Handle error
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Failed to register: $e')),
     );
   }
+}
 
-  void _handleCreateEvent(BuildContext context) {
-    // TODO: Navigate to create event screen
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Create new event'),
-        duration: Duration(seconds: 1),
-      ),
-    );
-  }
-
-  // Helper methods
+  // Helpers
   String _getFilterLabel(EventFilter filter) {
     return switch (filter) {
       EventFilter.upcoming => 'Upcoming',

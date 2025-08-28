@@ -3,40 +3,50 @@ import 'package:campus_event_mgmt_system/models/event.dart';
 
 class EventRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final String _collection = 'events';
 
-  Stream<List<Event>> getEventsStream() {
-    return _firestore.collection(_collection).orderBy('date').snapshots().map(
-      (snapshot) => snapshot.docs.map((doc) {
-        final data = doc.data();
-        return Event.fromJson({
-          'id': doc.id,
-          ...data,
-        });
-      }).toList(),
-    );
+  Future<List<Event>> getAllEvents() async {
+    final snapshot = await _firestore.collection('events').get();
+    return snapshot.docs.map((doc) => Event.fromJson(doc)).toList();
   }
 
-  Future<Event> createEvent(Map<String, dynamic> eventData) async {
-    final docRef = await _firestore.collection(_collection).add(eventData);
-    final doc = await docRef.get();
-    return Event.fromJson({
-      'id': doc.id,
-      ...doc.data()!,
-    });
+  Future<void> registerUserForEvent(String userId, Event event) async {
+  final userEventRef = _firestore
+      .collection('users')
+      .doc(userId)
+      .collection('registeredEvents')
+      .doc(event.id);
+
+  final existing = await userEventRef.get();
+  if (existing.exists) {
+    throw Exception("Already registered for this event");
   }
 
-  Future<Event> updateEvent(String eventId, Map<String, dynamic> eventData) async {
-    final docRef = _firestore.collection(_collection).doc(eventId);
-    await docRef.update(eventData);
-    final updatedDoc = await docRef.get();
-    return Event.fromJson({
-      'id': updatedDoc.id,
-      ...updatedDoc.data()!,
-    });
+  await userEventRef.set({
+    'eventId': event.id,
+    'title': event.title,
+    'registeredAt': FieldValue.serverTimestamp(),
+  });
+
+  final eventRef = _firestore.collection('events').doc(event.id);
+  await eventRef.update({
+    'registeredUsers': FieldValue.increment(1),
+  });
+}
+
+
+  Future<List<Event>> getUserRegisteredEvents(String userId) async {
+    final snapshot = await _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('registeredEvents')
+        .get();
+
+    return snapshot.docs.map((doc) => Event.fromJson(doc)).toList();
   }
 
-  Future<void> deleteEvent(String eventId) async {
-    await _firestore.collection(_collection).doc(eventId).delete();
+  /// 🔹 Create a new event
+  Future<void> createEvent(Event event) async {
+    final eventRef = _firestore.collection('events').doc(event.id);
+    await eventRef.set(event.toJson());
   }
 }
