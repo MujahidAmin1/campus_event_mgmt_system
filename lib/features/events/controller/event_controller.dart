@@ -1,24 +1,29 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:campus_event_mgmt_system/models/event.dart';
 import 'package:campus_event_mgmt_system/features/events/repository/event_repository.dart';
-import 'package:campus_event_mgmt_system/core/providers.dart';
 
 enum EventFilter { upcoming, ongoing, past }
 
-var eventFilterProvider = StateProvider<EventFilter>((ref) => EventFilter.upcoming);
-
-var eventsProvider = FutureProvider<List<Event>>((ref) async {
-  final repository = ref.read(eventRepositoryProvider);
-  return await repository.getEvents();
+final eventRepositoryProvider = Provider<EventRepository>((ref) {
+  return EventRepository();
 });
 
-var filteredEventsProvider = Provider<AsyncValue<List<Event>>>((ref) {
+final eventFilterProvider = StateProvider<EventFilter>((ref) => EventFilter.upcoming);
+
+/// Stream of all events from Firestore
+final eventsProvider = StreamProvider<List<Event>>((ref) {
+  final repository = ref.read(eventRepositoryProvider);
+  return repository.getEventsStream();
+});
+
+/// Filtered events based on selected filter
+final filteredEventsProvider = Provider<AsyncValue<List<Event>>>((ref) {
   final eventsAsync = ref.watch(eventsProvider);
   final filter = ref.watch(eventFilterProvider);
-  
+
   return eventsAsync.when(
     data: (events) {
-      final filteredEvents = events.where((event) {
+      final filtered = events.where((event) {
         switch (filter) {
           case EventFilter.upcoming:
             return event.isUpcoming;
@@ -28,39 +33,31 @@ var filteredEventsProvider = Provider<AsyncValue<List<Event>>>((ref) {
             return event.isPast;
         }
       }).toList();
-      return AsyncValue.data(filteredEvents);
+      return AsyncValue.data(filtered);
     },
     loading: () => const AsyncValue.loading(),
-    error: (error, stack) => AsyncValue.error(error, stack),
+    error: (e, st) => AsyncValue.error(e, st),
   );
 });
 
-var eventRepositoryProvider = Provider<EventRepository>((ref) {
-  final apiService = ref.read(apiServiceProvider);
-  return EventRepository(apiService);
-});
-
+/// EventController for manual operations (create/update/delete)
 class EventController extends StateNotifier<AsyncValue<List<Event>>> {
   final EventRepository _repository;
-
   EventController(this._repository) : super(const AsyncValue.loading()) {
-    loadEvents();
+    _listenToEvents();
   }
 
-  Future<void> loadEvents() async {
-    state = const AsyncValue.loading();
-    try {
-      final events = await _repository.getEvents();
+  void _listenToEvents() {
+    _repository.getEventsStream().listen((events) {
       state = AsyncValue.data(events);
-    } catch (error, stack) {
+    }, onError: (error, stack) {
       state = AsyncValue.error(error, stack);
-    }
+    });
   }
 
   Future<void> createEvent(Map<String, dynamic> eventData) async {
     try {
       await _repository.createEvent(eventData);
-      await loadEvents(); // Reload events after creation
     } catch (error, stack) {
       state = AsyncValue.error(error, stack);
     }
@@ -69,7 +66,6 @@ class EventController extends StateNotifier<AsyncValue<List<Event>>> {
   Future<void> updateEvent(String eventId, Map<String, dynamic> eventData) async {
     try {
       await _repository.updateEvent(eventId, eventData);
-      await loadEvents(); // Reload events after update
     } catch (error, stack) {
       state = AsyncValue.error(error, stack);
     }
@@ -78,9 +74,15 @@ class EventController extends StateNotifier<AsyncValue<List<Event>>> {
   Future<void> deleteEvent(String eventId) async {
     try {
       await _repository.deleteEvent(eventId);
-      await loadEvents(); // Reload events after deletion
     } catch (error, stack) {
       state = AsyncValue.error(error, stack);
     }
   }
 }
+
+/// Provider for EventController
+final eventControllerProvider =
+    StateNotifierProvider<EventController, AsyncValue<List<Event>>>((ref) {
+  final repository = ref.read(eventRepositoryProvider);
+  return EventController(repository);
+});

@@ -4,7 +4,7 @@ class Event {
   final String description;
   final DateTime date;
   final String location;
-  final String createdBy;
+  final String organiser;
 
   const Event({
     required this.id,
@@ -12,7 +12,7 @@ class Event {
     required this.description,
     required this.date,
     required this.location,
-    required this.createdBy,
+    required this.organiser,
   });
 
   factory Event.fromJson(Map<String, dynamic> json) {
@@ -22,7 +22,7 @@ class Event {
       description: json['description'] ?? '',
       date: DateTime.parse(json['date'] ?? DateTime.now().toIso8601String()),
       location: json['location'] ?? '',
-      createdBy: json['createdBy'] ?? '',
+      organiser: json['organiser'] ?? '',
     );
   }
 
@@ -33,7 +33,7 @@ class Event {
       'description': description,
       'date': date.toIso8601String(),
       'location': location,
-      'createdBy': createdBy,
+      'organiser': organiser,
     };
   }
 
@@ -45,7 +45,7 @@ class Event {
   // For backward compatibility with existing UI
   DateTime get dateTime => date;
   String get venue => location;
-  String get organizerName => createdBy;
+  String get organizerName => organiser;
   int get registeredUsers => 0; // This will need to be updated when you have registration API
 }
 

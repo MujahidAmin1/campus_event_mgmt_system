@@ -107,7 +107,7 @@ class EventCard extends StatelessWidget {
       children: [
         Expanded(
           child: Text(
-            event.createdBy,
+            event.organiser,
             style: kTextStyle(size: 12, color: Colors.grey[600]),
             overflow: TextOverflow.ellipsis,
           ),

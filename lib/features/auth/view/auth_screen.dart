@@ -32,25 +32,21 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authControllerProvider);
-    
-    // Listen for successful authentication
-    ref.listen<AsyncValue<AuthResponse?>>(authControllerProvider, (previous, next) {
-      next.whenData((response) {
-        if (response != null) {
-          _handleSuccessfulAuth();
+    final authState = ref.watch(authControllerProvider); // AsyncValue<User?>
+    final userRole = ref.watch(userRoleProvider);
+
+    // Listen for auth changes inside build
+    ref.listen<AsyncValue<User?>>(authControllerProvider, (previous, next) {
+      next.whenData((user) {
+        if (user != null) {
+          _navigateAfterAuth(ref.read(userRoleProvider));
+          _showSuccessSnackBar(_isLogin ? 'Login successful!' : 'Registration successful!');
         }
       });
-      
+
       next.whenOrNull(
         error: (error, stack) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(error.toString()),
-              backgroundColor: Colors.red,
-              duration: const Duration(seconds: 3),
-            ),
-          );
+          _showErrorSnackBar(error.toString());
         },
       );
     });
@@ -68,9 +64,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 const SizedBox(height: 32),
                 _buildAuthForm(),
                 const SizedBox(height: 24),
-                _buildRoleSelection(),
-                const SizedBox(height: 32),
-                _buildSubmitButton(authState),
+                if (!_isLogin) _buildRoleSelection(),
+                if (!_isLogin) const SizedBox(height: 32),
+                _buildSubmitButton(authState), // pass User? state
                 const SizedBox(height: 16),
                 _buildToggleButton(),
               ],
@@ -79,6 +75,20 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         ),
       ),
     );
+  }
+
+  void _navigateAfterAuth(UserRole role) {
+    if (role == UserRole.admin) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const AdminEventsScreen()),
+      );
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const EventsScreen()),
+      );
+    }
   }
 
   Widget _buildHeader() {
@@ -91,17 +101,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             color: Colors.blue[100],
             borderRadius: BorderRadius.circular(20),
           ),
-          child: Icon(
-            Icons.event,
-            size: 40,
-            color: Colors.blue[700],
-          ),
+          child: Icon(Icons.event, size: 40, color: Colors.blue[700]),
         ),
         const SizedBox(height: 16),
-        Text(
-          'Campus Events',
-          style: kTextStyle(size: 28, isBold: true),
-        ),
+        Text('Campus Events', style: kTextStyle(size: 28, isBold: true)),
         const SizedBox(height: 8),
         Text(
           _isLogin ? 'Welcome back!' : 'Create your account',
@@ -119,43 +122,34 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           label: 'Username',
           icon: Icons.person,
           validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Please enter your username';
-            }
+            if (value == null || value.isEmpty) return 'Please enter your username';
             return null;
           },
         ),
         const SizedBox(height: 16),
-        if (!_isLogin) ...[
+        if (!_isLogin)
           _buildTextField(
             controller: _emailController,
             label: 'Email',
             icon: Icons.email,
             keyboardType: TextInputType.emailAddress,
             validator: (value) {
-              if (!_isLogin && (value == null || value.isEmpty)) {
-                return 'Please enter your email';
-              }
-              if (!_isLogin && !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value!)) {
+              if (value == null || value.isEmpty) return 'Please enter your email';
+              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
                 return 'Please enter a valid email';
               }
               return null;
             },
           ),
-          const SizedBox(height: 16),
-        ],
+        if (!_isLogin) const SizedBox(height: 16),
         _buildTextField(
           controller: _passwordController,
           label: 'Password',
           icon: Icons.lock,
           isPassword: true,
           validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Please enter your password';
-            }
-            if (!_isLogin && value.length < 6) {
-              return 'Password must be at least 6 characters';
-            }
+            if (value == null || value.isEmpty) return 'Please enter your password';
+            if (!_isLogin && value.length < 6) return 'Password must be at least 6 characters';
             return null;
           },
         ),
@@ -179,10 +173,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, color: Colors.grey[600]),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey[300]!),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: Colors.grey[300]!),
@@ -201,10 +192,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Select Role',
-          style: kTextStyle(size: 16, isBold: true),
-        ),
+        Text('Select Role', style: kTextStyle(size: 16, isBold: true)),
         const SizedBox(height: 12),
         Row(
           children: [
@@ -220,36 +208,26 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   Widget _buildRoleChip(UserRole role) {
     final isSelected = _selectedRole == role;
     final isStudent = role == UserRole.student;
-    
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          setState(() {
-            _selectedRole = role;
-          });
-        },
-        child: Container(
-          height: 48,
-          decoration: BoxDecoration(
-            color: isSelected 
-                ? (isStudent ? Colors.green : Colors.grey[400])
-                : Colors.grey[200],
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: isSelected 
-                  ? (isStudent ? Colors.green : Colors.grey[400]!)
-                  : Colors.grey[300]!,
-              width: 2,
-            ),
+
+    return GestureDetector(
+      onTap: () => setState(() => _selectedRole = role),
+      child: Container(
+        height: 48,
+        decoration: BoxDecoration(
+          color: isSelected ? (isStudent ? Colors.green : Colors.grey[400]) : Colors.grey[200],
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? (isStudent ? Colors.green : Colors.grey[400]!) : Colors.grey[300]!,
+            width: 2,
           ),
-          child: Center(
-            child: Text(
-              isStudent ? 'Student' : 'Admin',
-              style: kTextStyle(
-                size: 16,
-                isBold: isSelected,
-                color: isSelected ? Colors.white : Colors.grey[700],
-              ),
+        ),
+        child: Center(
+          child: Text(
+            isStudent ? 'Student' : 'Admin',
+            style: kTextStyle(
+              size: 16,
+              isBold: isSelected,
+              color: isSelected ? Colors.white : Colors.grey[700],
             ),
           ),
         ),
@@ -257,7 +235,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     );
   }
 
-  Widget _buildSubmitButton(AsyncValue<AuthResponse?> authState) {
+  Widget _buildSubmitButton(AsyncValue<User?> authState) {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
@@ -266,24 +244,16 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           backgroundColor: Colors.blue[700],
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           elevation: 0,
         ),
         child: authState.isLoading
             ? const SizedBox(
                 height: 20,
                 width: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                ),
+                child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Colors.white)),
               )
-            : Text(
-                _isLogin ? 'Login' : 'Register',
-                style: kTextStyle(size: 16, isBold: true, color: Colors.white),
-              ),
+            : Text(_isLogin ? 'Login' : 'Register', style: kTextStyle(size: 16, isBold: true, color: Colors.white)),
       ),
     );
   }
@@ -297,16 +267,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           style: kTextStyle(size: 14, color: Colors.grey[600]),
         ),
         TextButton(
-          onPressed: () {
-            setState(() {
-              _isLogin = !_isLogin;
-            });
-            ref.read(authControllerProvider.notifier).clearError();
-          },
-          child: Text(
-            _isLogin ? 'Register' : 'Login',
-            style: kTextStyle(size: 14, isBold: true, color: Colors.blue[700]),
-          ),
+          onPressed: () => setState(() {
+            _isLogin = !_isLogin;
+          }),
+          child: Text(_isLogin ? 'Register' : 'Login', style: kTextStyle(size: 14, isBold: true, color: Colors.blue[700])),
         ),
       ],
     );
@@ -315,12 +279,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   void _handleSubmit() {
     if (_formKey.currentState!.validate()) {
       final authController = ref.read(authControllerProvider.notifier);
-      
       if (_isLogin) {
-        authController.login(
-          _usernameController.text.trim(),
-          _passwordController.text,
-        );
+        authController.login(_usernameController.text.trim(), _passwordController.text);
       } else {
         authController.register(
           _usernameController.text.trim(),
@@ -332,19 +292,15 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     }
   }
 
-  void _handleSuccessfulAuth() {
-    final userRole = ref.read(userRoleProvider);
-    
-    if (userRole == UserRole.admin) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const AdminEventsScreen()),
-      );
-    } else {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const EventsScreen()),
-      );
+  void _showErrorSnackBar(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), backgroundColor: Colors.red, duration: const Duration(seconds: 3)));
+    }
+  }
+
+  void _showSuccessSnackBar(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), backgroundColor: Colors.green, duration: const Duration(seconds: 2)));
     }
   }
 }
