@@ -141,36 +141,64 @@ class EventsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildEventsList(WidgetRef ref, AsyncValue<List<Event>> eventsAsync) {
-    return Expanded(
-      child: eventsAsync.when(
-        data: (events) {
-          if (events.isEmpty) {
-            return _buildEmptyState(ref.watch(eventFilterProvider));
-          }
-          return RefreshIndicator(
-            onRefresh: () async {
-              ref.invalidate(eventsProvider);
-            },
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              itemCount: events.length,
-              itemBuilder: (context, index) {
-                return EventCard(
-                  event: events[index],
-                  onTap: () => _handleEventTap(context, events[index]),
-                  onRegister: () => _handleRegister(context, ref ,events[index], FirebaseAuth.instance.currentUser!.uid),
-                  isRegistered: true,
-                );
+Widget _buildEventsList(WidgetRef ref, AsyncValue<List<Event>> eventsAsync) {
+  final userId = FirebaseAuth.instance.currentUser?.uid;
+  final registeredEventsAsync = ref.watch(userEventsProvider(userId ?? ''));
+
+  return Expanded(
+    child: eventsAsync.when(
+      data: (events) {
+        if (events.isEmpty) {
+          return _buildEmptyState(ref.watch(eventFilterProvider));
+        }
+        return registeredEventsAsync.when(
+          data: (registeredEvents) {
+            final registeredEventIds = registeredEvents.map((e) => e.id).toSet();
+            return RefreshIndicator(
+              onRefresh: () async {
+                ref.invalidate(eventsProvider);
+                ref.invalidate(userEventsProvider(userId ?? ''));
               },
-            ),
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => _buildErrorState(),
-      ),
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                itemCount: events.length,
+                itemBuilder: (context, index) {
+                  final event = events[index];
+                  final isRegistered = registeredEventIds.contains(event.id);
+                  return EventCard(
+                    event: event,
+                    onTap: () => _handleEventTap(context, event),
+                    onRegister: () => _handleRegister(context, ref, event, userId!),
+                    isRegistered: isRegistered,
+                  );
+                },
+              ),
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, _) => _buildErrorState(),
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, _) => _buildErrorState(),
+    ),
+  );
+}
+
+void _handleRegister(BuildContext context, WidgetRef ref, Event event, String userId) async {
+  try {
+    await ref.read(eventsProvider.notifier).registerForEvent(userId, event);
+        ref.invalidate(eventsProvider);
+    ref.invalidate(userEventsProvider(userId)); // <-- Refresh registered events
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Successfully registered for ${event.title}')),
+    ); 
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Failed to register: $e')),
     );
   }
+}
 
   Widget _buildEmptyState(EventFilter filter) {
     return Center(
@@ -227,22 +255,7 @@ class EventsScreen extends ConsumerWidget {
     ));
   }
 
- void _handleRegister(BuildContext context, WidgetRef ref, Event event, String userId) async {
-  try {
-    // Call controller registration
-    await ref.read(eventsProvider.notifier).registerForEvent(userId, event);
 
-    // Show success
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Successfully registered for ${event.title}')),
-    );
-  } catch (e) {
-    // Handle error
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Failed to register: $e')),
-    );
-  }
-}
 
   // Helpers
   String _getFilterLabel(EventFilter filter) {

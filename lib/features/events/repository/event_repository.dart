@@ -35,14 +35,23 @@ class EventRepository {
 
 
   Future<List<Event>> getUserRegisteredEvents(String userId) async {
-    final snapshot = await _firestore
-        .collection('users')
-        .doc(userId)
-        .collection('registeredEvents')
-        .get();
+  final snapshot = await _firestore
+      .collection('users')
+      .doc(userId)
+      .collection('registeredEvents')
+      .get();
 
-    return snapshot.docs.map((doc) => Event.fromJson(doc)).toList();
+  // Fetch full event details for each registered event
+  List<Event> events = [];
+  for (var doc in snapshot.docs) {
+    final eventId = doc.data()['eventId'];
+    final eventDoc = await _firestore.collection('events').doc(eventId).get();
+    if (eventDoc.exists) {
+      events.add(Event.fromJson(eventDoc));
+    }
   }
+  return events;
+}
 
   /// 🔹 Create a new event
   Future<void> createEvent(Event event) async {

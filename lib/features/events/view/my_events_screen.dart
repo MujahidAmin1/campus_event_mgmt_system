@@ -17,26 +17,31 @@ class MyEventsScreen extends ConsumerWidget {
         title: const Text('My Events'),
         centerTitle: true,
       ),
-      body: myEventsAsync.when(
-        data: (events) {
-          if (events.isEmpty) {
-            return const Center(child: Text('You have not registered for any events.'));
-          }
-          return ListView.builder(
-            itemCount: events.length,
-            itemBuilder: (_, index) {
-              final event = events[index];
-              return EventCard(
-                event: event,
-                onTap: () => {},
-                 
-                showRegisterButton: false, // don't show register button in MyEvents
-              );
-            },
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+      body: RefreshIndicator(
+         onRefresh: () async {
+    ref.invalidate(userEventsProvider(userId));
+  },
+        child: myEventsAsync.when(
+          data: (events) {
+            if (events.isEmpty) {
+              return const Center(child: Text('You have not registered for any events.'));
+            }
+            return ListView.builder(
+              itemCount: events.length,
+              itemBuilder: (_, index) {
+                final event = events[index];
+                return EventCard(
+                  event: event,
+                  onTap: () => {},
+                   
+                  showRegisterButton: false, // don't show register button in MyEvents
+                );
+              },
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => Center(child: Text('Error: $e')),
+        ),
       ),
     );
   }

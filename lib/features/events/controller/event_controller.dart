@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:campus_event_mgmt_system/models/event.dart';
 import 'package:campus_event_mgmt_system/features/events/repository/event_repository.dart';
@@ -44,7 +45,18 @@ class EventController extends StateNotifier<AsyncValue<List<Event>>> {
   EventController(this.ref) : super(const AsyncValue.loading()) {
     fetchEvents();
   }
-
+  final isEventRegisteredProvider = FutureProvider.family<bool, Map<String, String>>((ref, params) async {
+  final userId = params['userId']!;
+  final eventId = params['eventId']!;
+  final firestore = FirebaseFirestore.instance;
+  final doc = await firestore
+      .collection('users')
+      .doc(userId)
+      .collection('registeredEvents')
+      .doc(eventId)
+      .get();
+  return doc.exists;
+});
   Future<void> fetchEvents() async {
     try {
       final events = await ref.read(eventRepositoryProvider).getAllEvents();
@@ -53,7 +65,7 @@ class EventController extends StateNotifier<AsyncValue<List<Event>>> {
       state = AsyncValue.error(e, StackTrace.current);
     }
   }
-
+   
    Future<void> registerForEvent(String userId, Event event) async {
     try {
       await ref.read(eventRepositoryProvider).registerUserForEvent(userId, event);
